@@ -22,7 +22,7 @@ func main() {
 	router.Static("/img", "web/img")
 	router.Static("/fonts", "web/fonts")
 	router.StaticFile("/favicon.ico", "web/favicon.ico")
-	router.LoadHTMLGlob("../../web/*.html")
+	router.LoadHTMLGlob("web/*.html")
 
 	for route, handler := range ttAPI.NewTimetableAPI().GetHandlers() {
 		router.Handle(handler.Method, route, handler.Fn)
