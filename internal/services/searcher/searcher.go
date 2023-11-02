@@ -26,7 +26,7 @@ type Searcher struct {
 	status      int
 	Condition   *Condition
 	tree        *searchTree
-	nextNodeIdx int
+	// nextNodeIdx int
 	nextNode    *node
 
 	solutions []Solution
@@ -36,9 +36,9 @@ type Searcher struct {
 	now       time.Time
 }
 
-type tInterval struct {
-	from, to time.Time
-}
+// type tInterval struct {
+// 	from, to time.Time
+// }
 
 func NewSearcher() *Searcher {
 	return &Searcher{
@@ -95,6 +95,9 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	sort.Slice(firstNodes, func(i, j int) bool {
+		return firstNodes[i].id < firstNodes[j].id
+	})
 	s.tree.setFirstNodes(firstNodes)
 
 	if len(s.tree.firstNodes) == 0 {
@@ -104,46 +107,59 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 	// Устанавливаем указатель nextNode на первый элемент
 	s.nextNode = s.tree.firstNodes[0]
 
-	go s.rotateNextNode()
+	// go s.rotateNextNode()
 
 	s.lock.Unlock()
 
-	go func() {
-		defer func() {
-			s.lock.Lock()
-			s.status = StatusStopped
-			if s.tree != nil {
-				s.tree.empty()
+	// for i := 0; i < len(s.tree.firstNodes); i++ {
+	for i := 0; i < len(s.tree.firstNodes); i++ {
+		// s.lock.Lock()
+		fmt.Println("switch node", i, s.Mem())
+		// s.nextNodeIdx++
+		// idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
+		// idx = idx % nLen
+		// s.nextNodeIdx = idx
+		// s.nextNode = s.tree.firstNodes[i]
+		// s.lock.Unlock()
+	
+		idxRootNode := i
+		go func() {
+			defer func() {
+				s.lock.Lock()
+				s.status = StatusStopped
+				if s.tree != nil {
+					s.tree.empty()
+				}
+				runtime.GC()
+				s.lock.Unlock()
+			}()
+
+			isSingleCPU := runtime.NumCPU() == 1
+			for {
+				select {
+				case <-s.stop:
+					return
+				default:
+					if s.Mem() > 14*1024*1024*1024 {
+						fmt.Println("break on max memory exceeded")
+						return
+					}
+
+					n := s.getNextNode(idxRootNode)
+					if n == nil {
+						fmt.Println("search finished")
+						return
+					}
+
+					s.drillNode(n)
+
+					if isSingleCPU {
+						time.Sleep(50 * time.Millisecond)
+					}
+				}
 			}
-			runtime.GC()
-			s.lock.Unlock()
 		}()
-
-		isSingleCPU := runtime.NumCPU() == 1
-		for {
-			select {
-			case <-s.stop:
-				return
-			default:
-				if s.Mem() > 14*1024*1024*1024 {
-					fmt.Println("break on max memory exceeded")
-					return
-				}
-
-				n := s.getNextNode()
-				if n == nil {
-					fmt.Println("search finished")
-					return
-				}
-
-				s.drillNode(n)
-
-				if isSingleCPU {
-					time.Sleep(50 * time.Millisecond)
-				}
-			}
-		}
-	}()
+	}
 
 	time.Sleep(2 * time.Second)
 
@@ -181,6 +197,7 @@ func (s *Searcher) drillNode(theNode *node) {
 		if curNode.nextIdx < len(curNode.next) {
 			break
 		}
+		fmt.Println("id: ", curNode.id, "depth: ", curNode.depth, "curNode.nextIdx: ", curNode.nextIdx, "len: ", len(curNode.next))
 		curNode = curNode.parent
 	}
 }
@@ -226,7 +243,7 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 		if slotsCnt == 0 {
 			team := s.Condition.teamsByIDs[tID]
 			div := s.Condition.divMap[team.DivisionID]
-			return nil, fmt.Errorf("Невозможно разместить команду %s %s", team.Name, div.Name)
+			return nil, fmt.Errorf("невозможно разместить команду %s %s", team.Name, div.Name)
 		}
 		if theTeam == nil || curCnt > slotsCnt {
 			theTeam, curCnt = s.Condition.teamsByIDs[tID], slotsCnt
@@ -266,11 +283,13 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 
 	fieldStart, gameDur := s.Condition.Fields[0].TimeFrom, s.Condition.Fields[0].GameDur
 	firstNodes := make([]*node, 0, nodesLen)
+	id := 0
 	for fNode, pairSlots := range theNodeTeamPairSlots {
 		for pair, slots := range pairSlots {
 			for _, slot := range slots {
 				from, to := GetFromTo(fieldStart, gameDur, slot)
 				firstNodes = append(firstNodes, &node{
+					id: id,
 					field:    fNode,
 					teamPair: pair,
 					parent:   nil,
@@ -279,6 +298,7 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 					timeFrom: from,
 					timeTo:   to,
 				})
+				id++
 			}
 		}
 	}
@@ -500,6 +520,7 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 
 					from, to := GetFromTo(fieldStart, gameDur, slot)
 					nodes = append(nodes, &node{
+						id: 			theNode.id,
 						value:    0,
 						valueSum: valueSum,
 						field:    fNode,
@@ -705,11 +726,11 @@ func fNodeKey(fNode *ds.FieldNode) string {
 	return fmt.Sprintf("%d_%s_%s", fNode.Format(), fNode.GetTimeFrom().Format("15:04"), fNode.GetTimeTo().Format("15:04"))
 }
 
-func (s *Searcher) getNextNode() *node {
+func (s *Searcher) getNextNode(idx int) *node {
 	// rotate nextNode pointer
 	// todo ...
 
-	return s.nextNode
+	return s.tree.firstNodes[idx]
 }
 
 func (s *Searcher) GetSolutions() ([]Solution, int) {
@@ -795,27 +816,27 @@ func (s *Searcher) addSolution(theNode *node) {
 	}
 }
 
-func (s *Searcher) rotateNextNode() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-s.stop:
-			return
-		default:
-		}
-		select {
-		case <-s.stop:
-			return
-		case <-ticker.C:
-			s.lock.Lock()
-			fmt.Println("switch node", s.nextNodeIdx)
-			s.nextNodeIdx++
-			idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
-			idx = idx % nLen
-			s.nextNodeIdx = idx
-			s.nextNode = s.tree.firstNodes[idx]
-			s.lock.Unlock()
-		}
-	}
-}
+// func (s *Searcher) rotateNextNode() {
+// 	ticker := time.NewTicker(5 * time.Second)
+// 	defer ticker.Stop()
+// 	for {
+// 		select {
+// 		case <-s.stop:
+// 			return
+// 		default:
+// 		}
+// 		select {
+// 		case <-s.stop:
+// 			return
+// 		case <-ticker.C:
+// 			s.lock.Lock()
+// 			fmt.Println("switch node", s.nextNodeIdx)
+// 			s.nextNodeIdx++
+// 			idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
+// 			idx = idx % nLen
+// 			s.nextNodeIdx = idx
+// 			s.nextNode = s.tree.firstNodes[idx]
+// 			s.lock.Unlock()
+// 		}
+// 	}
+// }
