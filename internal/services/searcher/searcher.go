@@ -28,6 +28,7 @@ type Searcher struct {
 	tree        *searchTree
 	// nextNodeIdx int
 	nextNode    *node
+	bestDepth		int
 
 	solutions []Solution
 	attempts  int
@@ -104,8 +105,10 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 		return []Solution{}, 0, errors.New("couldn't generate first nodes")
 	}
 
+	s.bestDepth = 0
+
 	// Устанавливаем указатель nextNode на первый элемент
-	s.nextNode = s.tree.firstNodes[0]
+	// s.nextNode = s.tree.firstNodes[0]
 
 	// go s.rotateNextNode()
 
@@ -184,6 +187,11 @@ func (s *Searcher) drillNode(theNode *node) {
 
 	if curNode.depth >= teamsCnt {
 		s.addSolution(curNode)
+	} else if curNode.depth > s.bestDepth {
+		s.lock.Lock()
+		s.bestDepth = curNode.depth
+		s.lock.Unlock()
+		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
 	}
 
 	s.lock.Lock()
@@ -197,7 +205,6 @@ func (s *Searcher) drillNode(theNode *node) {
 		if curNode.nextIdx < len(curNode.next) {
 			break
 		}
-		fmt.Println("id: ", curNode.id, "depth: ", curNode.depth, "curNode.nextIdx: ", curNode.nextIdx, "len: ", len(curNode.next))
 		curNode = curNode.parent
 	}
 }
