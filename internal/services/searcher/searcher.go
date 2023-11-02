@@ -28,6 +28,7 @@ type Searcher struct {
 	tree        *searchTree
 	nextNodeIdx int
 	nextNode    *node
+	bestDepth		int
 
 	solutions []Solution
 	attempts  int
@@ -103,6 +104,7 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 
 	// Устанавливаем указатель nextNode на первый элемент
 	s.nextNode = s.tree.firstNodes[0]
+	s.bestDepth = 0
 
 	go s.rotateNextNode()
 
@@ -168,6 +170,11 @@ func (s *Searcher) drillNode(theNode *node) {
 
 	if curNode.depth >= teamsCnt {
 		s.addSolution(curNode)
+	} else if curNode.depth > s.bestDepth {
+		s.lock.Lock()
+		s.bestDepth = curNode.depth
+		s.lock.Unlock()
+		fmt.Println("rootNode: ",s.nextNodeIdx, "depth: ", curNode.depth, time.Now())
 	}
 
 	s.lock.Lock()
@@ -181,7 +188,6 @@ func (s *Searcher) drillNode(theNode *node) {
 		if curNode.nextIdx < len(curNode.next) {
 			break
 		}
-		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
 		curNode = curNode.parent
 	}
 }
@@ -810,7 +816,7 @@ func (s *Searcher) rotateNextNode() {
 			return
 		case <-ticker.C:
 			s.lock.Lock()
-			fmt.Println("switch node", s.nextNodeIdx)
+			// fmt.Println("switch node", s.nextNodeIdx)
 			s.nextNodeIdx++
 			idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
 			idx = idx % nLen
