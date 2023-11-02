@@ -15,8 +15,13 @@ const (
 )
 
 func main() {
-	router := gin.Default()
-	router.SetTrustedProxies(nil)
+	// router := gin.Default()
+	router := gin.New()
+	router.Use(
+		gin.LoggerWithWriter(gin.DefaultWriter, "/status"),
+		gin.Recovery(),
+	)
+  router.SetTrustedProxies(nil)
 	router.Static("/css", "web/css")
 	router.Static("/js", "web/js")
 	router.Static("/img", "web/img")

@@ -181,6 +181,7 @@ func (s *Searcher) drillNode(theNode *node) {
 		if curNode.nextIdx < len(curNode.next) {
 			break
 		}
+		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
 		curNode = curNode.parent
 	}
 }
