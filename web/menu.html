@@ -1,0 +1,23 @@
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "index" }} active{{end}}" aria-current="page" href="/">Составить расписание</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "stadiums" }} active{{end}}" href="/stadiums">Стадионы</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "divisions" }} active{{end}}" href="/divisions">Дивизионы</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "coaches" }} active{{end}}" href="/coaches">Тренеры</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "teams" }} active{{end}}" href="/teams">Команды</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "wishes" }} active{{end}}" href="/wishes">Пожелания</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link{{ if eq .page "games" }} active{{end}}" href="/games">Предыдущие игры</a>
+    </li>
+</ul>

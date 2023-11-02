@@ -1,0 +1,77 @@
+body input[type="checkbox"],body input[type="checkbox"]:active, body input[type="checkbox"]:focus {
+  outline: 0 !important;
+  box-shadow: none;
+}
+.blog-header h1 {
+  padding-left: 60px;
+  margin-bottom: 0;
+  background: url(/img/ball.png) 0px 50% no-repeat;
+  background-size: 50px;
+  line-height: 70px;
+}
+.subtitle {
+  margin: 20px 0px;
+}
+.form-group label {
+  font-weight: bold;
+  margin: 0;
+}
+#FieldsTable {
+  margin-bottom: 0;
+}
+#FieldsTable input[type="text"] {
+  width: 100%;
+}
+#AddField {
+  width: 100%;
+}
+#WishTable input[type="text"] {
+  width: 100%;
+}
+#Results {
+  visibility: hidden;
+  border-top:1px solid #ccc;
+  padding-top:20px;
+  min-height:500px;
+}
+#SolutionsList ul {
+  max-height: 600px;
+  overflow-y: auto;
+}
+#SolutionsList ul li {
+  cursor: pointer;
+}
+#SolutionsList ul li:hover {
+  color: #818182;
+  background-color: #ececf6;
+}
+.tl-table {
+  width:100%;
+  font-size: 0.85rem;
+  margin: 40px 0;
+  line-height: 0.75rem;
+}
+.timeline {
+  position: relative;
+  height: 0.7rem;
+  overflow: hidden;
+  font-size: .75rem;
+  background-color: #e9ecef;
+  border-radius: 0.25rem;
+}
+.timeline-interval {
+  background-color: #17a2b8!important;
+  position: absolute;
+  bottom: 0;
+  top: 0;
+  opacity: 0.7;
+}
+.bttns-top-panel {
+  margin-bottom: 10px;
+}
+.bttns-top-panel button {
+  margin: 5px 2px;
+}
+#TeamsCnt {
+  color: #dc3545;
+}
