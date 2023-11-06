@@ -117,7 +117,7 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 	// for i := 0; i < len(s.tree.firstNodes); i++ {
 	for i := 0; i < len(s.tree.firstNodes); i++ {
 		// s.lock.Lock()
-		fmt.Println("switch node", i, s.Mem())
+		fmt.Println("Starting with node", i, "Memory allocated (KB): ", s.Mem() / 1024)
 		// s.nextNodeIdx++
 		// idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
 		// idx = idx % nLen
@@ -185,13 +185,18 @@ func (s *Searcher) drillNode(theNode *node) {
 		curNode = curNode.next[curNode.nextIdx]
 	}
 
-	if curNode.depth >= teamsCnt {
-		s.addSolution(curNode)
-	} else if curNode.depth > s.bestDepth {
+	if curNode.depth > s.bestDepth {
 		s.lock.Lock()
 		s.bestDepth = curNode.depth
 		s.lock.Unlock()
 		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
+	}
+
+	if curNode.depth >= teamsCnt {
+		if len(s.solutions) == 0 {
+			fmt.Println("rootNode: ", curNode.id, "Решение найдено после: ", s.attempts, "попыток", time.Now())
+		}
+		s.addSolution(curNode)
 	}
 
 	s.lock.Lock()
@@ -815,12 +820,12 @@ func (s *Searcher) addSolution(theNode *node) {
 
 	sl.HashStr = fmt.Sprintf("%d_%s", SearchCounter, sl.Hash())
 
+	s.lock.Lock()
 	if _, ok := s.solHashes[sl.HashStr]; !ok {
-		s.lock.Lock()
 		s.solHashes[sl.HashStr] = struct{}{}
 		s.solutions = append(s.solutions, sl)
-		s.lock.Unlock()
 	}
+	s.lock.Unlock()
 }
 
 // func (s *Searcher) rotateNextNode() {
