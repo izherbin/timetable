@@ -117,7 +117,7 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 	// for i := 0; i < len(s.tree.firstNodes); i++ {
 	for i := 0; i < len(s.tree.firstNodes); i++ {
 		// s.lock.Lock()
-		fmt.Println("Starting with node", i, "Memory allocated (KB): ", s.Mem() / 1024)
+		fmt.Println("                 Starting with node", i, "Memory allocated (KB): ", s.Mem() / 1024)
 		// s.nextNodeIdx++
 		// idx, nLen := s.nextNodeIdx, len(s.tree.firstNodes)
 		// idx = idx % nLen
@@ -189,12 +189,12 @@ func (s *Searcher) drillNode(theNode *node) {
 		s.lock.Lock()
 		s.bestDepth = curNode.depth
 		s.lock.Unlock()
-		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
+		fmt.Println("       rootNode: ", curNode.id, "depth: ", curNode.depth, time.Now())
 	}
 
 	if curNode.depth >= teamsCnt {
 		if len(s.solutions) == 0 {
-			fmt.Println("rootNode: ", curNode.id, "Решение найдено после: ", s.attempts, "попыток", time.Now())
+			fmt.Println("!!!!! rootNode: ", curNode.id, "Solution found after: ", s.attempts, "attempts", time.Now())
 		}
 		s.addSolution(curNode)
 	}
@@ -202,6 +202,9 @@ func (s *Searcher) drillNode(theNode *node) {
 	s.lock.Lock()
 	s.attempts++
 	s.lock.Unlock()
+	if s.attempts % 1000000 == 0 {
+		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, "from:", s.bestDepth, "attempts:", s.attempts, time.Now())
+	}
 
 	curNode = curNode.parent
 	for curNode != nil {
