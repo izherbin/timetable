@@ -19,19 +19,28 @@ func nodeGenID() int {
 }
 
 type node struct {
-	id       int
-	value    int // стоимость ноды
-	valueSum int // стоимость ноды + стоимость родительской
-	score    int
+	id       				int
+	value    				int // стоимость ноды
+	valueSum 				int // стоимость ноды + стоимость родительской
+	score    				int
 
-	field    *ds.FieldNode // поле или пара полей
-	teamPair *ds.TeamPair  // пара команд
-	slot     int
-	parent   *node   // предыдущая нода
-	next     []*node // следующие ноды
-	nextIdx  int
-	depth    int
-	priority int
+	teamGames				map[int]map[int]bool
+	teamGamesCnt		map[int]int
+	teamPrevSlots		map[int][]int
+	coachPrevSlots	map[int][]int
+	coachTeamsCnt		map[int]int
+	fieldsPrevSlots	map[int]map[int]bool
+	fieldSlotsMap		map[int][]int
+	prevPairsByDiv	map[int]map[*ds.TeamPair]bool	
+
+	field    				*ds.FieldNode // поле или пара полей
+	teamPair 				*ds.TeamPair  // пара команд
+	slot     				int
+	parent   				*node   // предыдущая нода
+	next     				[]*node // следующие ноды
+	nextIdx  				int
+	depth    				int
+	priority 				int
 
 	timeFrom time.Time // начало игры
 	timeTo   time.Time // конец игры
