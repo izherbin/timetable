@@ -115,7 +115,7 @@ func (s *Searcher) Search(cond *Condition) ([]Solution, int, error) {
 	s.lock.Unlock()
 
 	// for i := 0; i < len(s.tree.firstNodes); i++ {
-	for i := 0; i < 1; i++ {
+	for i := 0; i < len(s.tree.firstNodes); i++ {
 		// s.lock.Lock()
 		fmt.Println("                 Starting with node", i, "Memory allocated (KB): ", s.Mem() / 1024)
 		// s.nextNodeIdx++
@@ -206,6 +206,9 @@ func (s *Searcher) drillNode(theNode *node) {
 		fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, "from:", s.bestDepth, "attempts:", s.attempts, time.Now())
 	}
 
+	// if curNode.id > 20 && curNode.id < 30 {
+	// 	fmt.Println("rootNode: ", curNode.id, "depth: ", curNode.depth, "from:", s.bestDepth, "This is good node")
+	// }
 	curNode = curNode.parent
 	for curNode != nil {
 		curNode.next[curNode.nextIdx] = nil
@@ -296,6 +299,11 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 		}
 	}
 
+	coachTeamsCnt := make(map[int]int)
+	for _, team := range s.Condition.teamsByIDs {
+		coachTeamsCnt[team.CoachID]++
+	}
+
 	fieldStart, gameDur := s.Condition.Fields[0].TimeFrom, s.Condition.Fields[0].GameDur
 	firstNodes := make([]*node, 0, nodesLen)
 	for fNode, pairSlots := range theNodeTeamPairSlots {
@@ -308,9 +316,8 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 					teamGamesCnt: 		make(map[int]int),
 					teamPrevSlots: 		make(map[int][]int),
 					coachPrevSlots: 	make(map[int][]int),
-					coachTeamsCnt: 		make(map[int]int),
+					coachTeamsCnt: 		coachTeamsCnt,
 					fieldsPrevSlots:	make(map[int]map[int]bool),
-					fieldSlotsMap: 		make(map[int][]int),
 					prevPairsByDiv: 	make(map[int]map[*ds.TeamPair]bool),
 					field:    				fNode,
 					teamPair: 				pair,
@@ -384,72 +391,104 @@ func resolveTeamSlots(teamSlots []int, teamPrevSlots []int, coachPrevSlots []int
 }
 
 func (s *Searcher) genNodes(theNode *node) []*node {
-	if theNode != nil {
-		id1, id2 := theNode.teamPair.Team1.ID, theNode.teamPair.Team2.ID
-		team1, team2 := s.Condition.teamsByIDs[id1], s.Condition.teamsByIDs[id2]
-
-		theNode.teamGames[id1] = map[int]bool{id2: true}
-		theNode.teamGamesCnt[id1]++
-		theNode.teamGamesCnt[id2]++
-		theNode.teamPrevSlots[id1] = append(theNode.teamPrevSlots[id1], theNode.slot)
-		theNode.teamPrevSlots[id2] = append(theNode.teamPrevSlots[id2], theNode.slot)
-
-		theNode.coachPrevSlots[team1.CoachID] = append(theNode.coachPrevSlots[team1.CoachID], theNode.slot)
-		theNode.coachPrevSlots[team2.CoachID] = append(theNode.coachPrevSlots[team2.CoachID], theNode.slot)
-
-		if theNode.fieldsPrevSlots[theNode.field.Field1.ID] == nil {
-			theNode.fieldsPrevSlots[theNode.field.Field1.ID] = make(map[int]bool)
+	teamGames := make(map[int]map[int]bool)
+	for kRow := range theNode.teamGames {
+		teamGames[kRow] = make(map[int]bool)
+		for kCol, vCol := range theNode.teamGames[kRow] {
+			teamGames[kRow][kCol] = vCol
 		}
-		theNode.fieldsPrevSlots[theNode.field.Field1.ID][theNode.slot] = true
-
-		if theNode.field.Field2 != nil {
-			if theNode.fieldsPrevSlots[theNode.field.Field2.ID] == nil {
-				theNode.fieldsPrevSlots[theNode.field.Field2.ID] = make(map[int]bool)
-			}
-			theNode.fieldsPrevSlots[theNode.field.Field2.ID][theNode.slot] = true
+	}
+	teamGamesCnt := make(map[int]int)
+	for k, v := range theNode.teamGamesCnt {
+		teamGamesCnt[k] = v
+	}
+	teamPrevSlots := make(map[int][]int)
+	for k, v := range theNode.teamPrevSlots {
+		teamPrevSlots[k] = make([]int, len(theNode.teamPrevSlots[k]))
+		copy(teamPrevSlots[k], v)
+	}
+	coachPrevSlots := make(map[int][]int)
+	for k, v := range theNode.coachPrevSlots {
+		coachPrevSlots[k] = make([]int, len(theNode.coachPrevSlots[k]))
+		copy(coachPrevSlots[k], v)
+	}
+	coachTeamsCnt := theNode.coachTeamsCnt
+	fieldsPrevSlots := make(map[int]map[int]bool)
+	for kRow := range theNode.fieldsPrevSlots {
+		fieldsPrevSlots[kRow] = make(map[int]bool)
+		for kCol, vCol := range theNode.fieldsPrevSlots[kRow] {
+			fieldsPrevSlots[kRow][kCol] = vCol
 		}
-
-		divID := team1.DivisionID
-		if _, ok := theNode.prevPairsByDiv[divID]; !ok {
-			theNode.prevPairsByDiv[divID] = make(map[*ds.TeamPair]bool)
+	}
+	prevPairsByDiv :=	make(map[int]map[*ds.TeamPair]bool)	
+	for kRow := range theNode.prevPairsByDiv {
+		prevPairsByDiv[kRow] = make(map[*ds.TeamPair]bool)
+		for kCol, vCol := range theNode.prevPairsByDiv[kRow] {
+			prevPairsByDiv[kRow][kCol] = vCol
 		}
-		theNode.prevPairsByDiv[divID][theNode.teamPair] = true
+	}
+	fieldSlotsMap := make(map[int][]int)
+
+	id1, id2 := theNode.teamPair.Team1.ID, theNode.teamPair.Team2.ID
+	team1, team2 := s.Condition.teamsByIDs[id1], s.Condition.teamsByIDs[id2]
+
+	teamGames[id1] = map[int]bool{id2: true}
+	teamGamesCnt[id1]++
+	teamGamesCnt[id2]++
+	teamPrevSlots[id1] = append(teamPrevSlots[id1], theNode.slot)
+	teamPrevSlots[id2] = append(teamPrevSlots[id2], theNode.slot)
+
+	coachPrevSlots[team1.CoachID] = append(coachPrevSlots[team1.CoachID], theNode.slot)
+	coachPrevSlots[team2.CoachID] = append(coachPrevSlots[team2.CoachID], theNode.slot)
+
+	if fieldsPrevSlots[theNode.field.Field1.ID] == nil {
+		fieldsPrevSlots[theNode.field.Field1.ID] = make(map[int]bool)
+	}
+	fieldsPrevSlots[theNode.field.Field1.ID][theNode.slot] = true
+
+	if theNode.field.Field2 != nil {
+		if fieldsPrevSlots[theNode.field.Field2.ID] == nil {
+			fieldsPrevSlots[theNode.field.Field2.ID] = make(map[int]bool)
+		}
+		fieldsPrevSlots[theNode.field.Field2.ID][theNode.slot] = true
 	}
 
-	for _, team := range s.Condition.teamsByIDs {
-		theNode.coachTeamsCnt[team.CoachID]++
+	divID := team1.DivisionID
+	if _, ok := prevPairsByDiv[divID]; !ok {
+		prevPairsByDiv[divID] = make(map[*ds.TeamPair]bool)
 	}
+	prevPairsByDiv[divID][theNode.teamPair] = true
 
 	for i := range s.Condition.Fields {
 		field := s.Condition.Fields[i]
 		fID := field.ID
-		prevSlots := theNode.fieldsPrevSlots[fID]
+		prevSlots := fieldsPrevSlots[fID]
 		for _, slot := range field.GetSlots() {
 			if !prevSlots[slot] {
-				theNode.fieldSlotsMap[fID] = append(theNode.fieldSlotsMap[fID], slot)
+				fieldSlotsMap[fID] = append(fieldSlotsMap[fID], slot)
 			}
 		}
-		theNode.fieldSlotsMap[fID] = UniqueSlots(theNode.fieldSlotsMap[fID])
+		fieldSlotsMap[fID] = UniqueSlots(fieldSlotsMap[fID])
 	}
 
 	teamNodeSlotsMap := make(map[int]map[*ds.FieldNode][]int)
 	for tID, team := range s.Condition.teamsByIDs {
-		if theNode.teamGamesCnt[tID] == 2 {
+		if teamGamesCnt[tID] == 2 {
 			continue // команда сыграла обе игры
 		}
 
 		div := s.Condition.divMap[team.DivisionID]
 		cID := team.CoachID
 
-		teamSlots := resolveTeamSlots(s.Condition.teamSlots[tID], theNode.teamPrevSlots[tID], theNode.coachPrevSlots[cID], theNode.coachTeamsCnt[cID])
+		teamSlots := resolveTeamSlots(s.Condition.teamSlots[tID], teamPrevSlots[tID], coachPrevSlots[cID], coachTeamsCnt[cID])
 		for _, fNode := range s.Condition.fieldNodes {
 			if fNode.Format() == 7 && div.Format < 7 || div.Format > fNode.Format() {
 				continue
 			}
 
-			fieldSlots := theNode.fieldSlotsMap[fNode.Field1.ID]
+			fieldSlots := fieldSlotsMap[fNode.Field1.ID]
 			if fNode.Field2 != nil {
-				fieldSlots = IntersectSlots(fieldSlots, theNode.fieldSlotsMap[fNode.Field2.ID])
+				fieldSlots = IntersectSlots(fieldSlots, fieldSlotsMap[fNode.Field2.ID])
 			}
 
 			availableSlots := IntersectSlots(teamSlots, fieldSlots)
@@ -494,13 +533,13 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 			if pair.Team1.ID != theMostProblemTeam.ID && pair.Team2.ID != theMostProblemTeam.ID {
 				continue
 			}
-			if theNode.teamGamesCnt[pair.Team1.ID] == 2 || theNode.teamGamesCnt[pair.Team2.ID] == 2 {
+			if teamGamesCnt[pair.Team1.ID] == 2 || teamGamesCnt[pair.Team2.ID] == 2 {
 				continue // оманда сыграла обе игры
 			}
-			if theNode.teamGames[pair.Team1.ID][pair.Team2.ID] || theNode.teamGames[pair.Team2.ID][pair.Team1.ID] {
+			if teamGames[pair.Team1.ID][pair.Team2.ID] || teamGames[pair.Team2.ID][pair.Team1.ID] {
 				continue
 			}
-			if !s.checkRestDivTeams(theNode.prevPairsByDiv, pair) {
+			if !s.checkRestDivTeams(prevPairsByDiv, pair) {
 				continue
 			}
 
@@ -509,9 +548,9 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 				slots2 := teamNodeSlotsMap[pair.Team2.ID][fNode]
 				pairSlots := IntersectSlots(slots1, slots2)
 
-				fieldSlots := theNode.fieldSlotsMap[fNode.Field1.ID]
+				fieldSlots := fieldSlotsMap[fNode.Field1.ID]
 				if fNode.Field2 != nil {
-					fieldSlots = IntersectSlots(fieldSlots, theNode.fieldSlotsMap[fNode.Field2.ID])
+					fieldSlots = IntersectSlots(fieldSlots, fieldSlotsMap[fNode.Field2.ID])
 				}
 
 				availableSlots := IntersectSlots(pairSlots, fieldSlots)
@@ -523,21 +562,20 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 					// количество размещений по команде
 
 					valueSum :=
-						calcTeamSumValue(theNode.teamPrevSlots, pair, slot) +
-							calcCoachSumValue(theNode.coachPrevSlots, pair, slot) +
-							calcFieldSumValue(theNode.fieldsPrevSlots, slot)
+						calcTeamSumValue(teamPrevSlots, pair, slot) +
+							calcCoachSumValue(coachPrevSlots, pair, slot) +
+							calcFieldSumValue(fieldsPrevSlots, slot)
 
 					from, to := GetFromTo(fieldStart, gameDur, slot)
 					nodes = append(nodes, &node{
 						id: 							theNode.id,
-						teamGames: 				theNode.teamGames,
-						teamGamesCnt: 		theNode.teamGamesCnt,
-						teamPrevSlots: 		theNode.teamPrevSlots,
-						coachPrevSlots: 	theNode.coachPrevSlots,
-						coachTeamsCnt: 		theNode.coachTeamsCnt,
-						fieldsPrevSlots:	theNode.fieldsPrevSlots,
-						fieldSlotsMap: 		theNode.fieldSlotsMap,
-						prevPairsByDiv: 	theNode.prevPairsByDiv,
+						teamGames: 				teamGames,
+						teamGamesCnt: 		teamGamesCnt,
+						teamPrevSlots: 		teamPrevSlots,
+						coachPrevSlots: 	coachPrevSlots,
+						coachTeamsCnt: 		coachTeamsCnt,
+						fieldsPrevSlots:	fieldsPrevSlots,
+						prevPairsByDiv: 	prevPairsByDiv,
 						value:    				0,
 						valueSum: 				valueSum,
 						field:    				fNode,
@@ -561,10 +599,10 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 	}
 
 	if theNode.depth >= len(s.Condition.Teams)-1 {
-		tPrevSum := calcTeamPrevSum(theNode.teamPrevSlots)
-		cMinMaxCnt := calcCoachMinMaxCnt(theNode.coachPrevSlots)
+		tPrevSum := calcTeamPrevSum(teamPrevSlots)
+		cMinMaxCnt := calcCoachMinMaxCnt(coachPrevSlots)
 		for _, node := range nodes {
-			node.score = tPrevSum + calcSumValue(node, theNode.teamPrevSlots, cMinMaxCnt)
+			node.score = tPrevSum + calcSumValue(node, teamPrevSlots, cMinMaxCnt)
 		}
 	}
 

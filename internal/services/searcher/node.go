@@ -30,7 +30,6 @@ type node struct {
 	coachPrevSlots	map[int][]int
 	coachTeamsCnt		map[int]int
 	fieldsPrevSlots	map[int]map[int]bool
-	fieldSlotsMap		map[int][]int
 	prevPairsByDiv	map[int]map[*ds.TeamPair]bool	
 
 	field    				*ds.FieldNode // поле или пара полей
