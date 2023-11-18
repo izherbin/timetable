@@ -296,6 +296,11 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 		}
 	}
 
+	coachTeamsCnt := make(map[int]int)
+	for _, team := range s.Condition.teamsByIDs {
+		coachTeamsCnt[team.CoachID]++
+	}
+
 	fieldStart, gameDur := s.Condition.Fields[0].TimeFrom, s.Condition.Fields[0].GameDur
 	firstNodes := make([]*node, 0, nodesLen)
 	id := 0
@@ -307,6 +312,7 @@ func (s *Searcher) genFirstNodes() ([]*node, error) {
 					id: id,
 					field:    fNode,
 					teamPair: pair,
+					coachTeamsCnt: coachTeamsCnt,
 					parent:   nil,
 					depth:    1,
 					slot:     slot,
@@ -382,7 +388,6 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 	teamGamesCnt := make(map[int]int)
 	teamPrevSlots := make(map[int][]int)
 	coachPrevSlots := make(map[int][]int)
-	coachTeamsCnt := make(map[int]int)
 	fieldsPrevSlots := make(map[int]map[int]bool)
 	fieldSlotsMap := make(map[int][]int)
 	prevPairsByDiv := make(map[int]map[*ds.TeamPair]bool)
@@ -422,10 +427,6 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 		curNode = curNode.parent
 	}
 
-	for _, team := range s.Condition.teamsByIDs {
-		coachTeamsCnt[team.CoachID]++
-	}
-
 	for i := range s.Condition.Fields {
 		field := s.Condition.Fields[i]
 		fID := field.ID
@@ -447,7 +448,7 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 		div := s.Condition.divMap[team.DivisionID]
 		cID := team.CoachID
 
-		teamSlots := resolveTeamSlots(s.Condition.teamSlots[tID], teamPrevSlots[tID], coachPrevSlots[cID], coachTeamsCnt[cID])
+		teamSlots := resolveTeamSlots(s.Condition.teamSlots[tID], teamPrevSlots[tID], coachPrevSlots[cID], theNode.coachTeamsCnt[cID])
 		for _, fNode := range s.Condition.fieldNodes {
 			if fNode.Format() == 7 && div.Format < 7 || div.Format > fNode.Format() {
 				continue
@@ -541,6 +542,7 @@ func (s *Searcher) genNodes(theNode *node) []*node {
 						field:    fNode,
 						teamPair: pair,
 						slot:     slot,
+						coachTeamsCnt: theNode.coachTeamsCnt,
 						parent:   theNode,
 						next:     nil,
 						nextIdx:  0,
